@@ -60,6 +60,10 @@ public class Main {
                     break;
                 case 2:
                     System.out.println("Zamkykamy appkę");
+
+                default:
+                    System.out.println("Nie ma takiej komendy");
+                    break;
             }
 
         } while (choice != 2);
