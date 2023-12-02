@@ -11,6 +11,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -30,7 +31,8 @@ public class Main {
         do {
             System.out.println("1. Pobierz położenie ISS");
             System.out.println("2. Pobierz ludzi na ISS");
-            System.out.println("3. Zakończ aplikacje");
+            System.out.println("3. Pokaż prędkość ISS");
+            System.out.println("4. Zakończ aplikacje");
 
             choice = scanner.nextInt();
             scanner.nextLine();
@@ -83,6 +85,29 @@ public class Main {
                     break;
 
                 case 3:
+                    final HttpResponse<String> stringHttpResponseFirst = getStringHttpResponse(ISS_API_LOCATION);
+                    final JsonNode jsonNodeFirst = getJsonNode(stringHttpResponseFirst);
+                    final double latFirst = jsonNodeFirst.at("/iss_position/latitude").asDouble();
+                    final double lonFirst = jsonNodeFirst.at("/iss_position/longitude").asDouble();
+
+                    //TODO weź czas z timestampa
+                    final int timeDifferenceInSeconds = 2;
+                    Thread.sleep(Duration.ofSeconds(timeDifferenceInSeconds));
+
+                    final HttpResponse<String> stringHttpResponseSecond = getStringHttpResponse(ISS_API_LOCATION);
+                    final JsonNode jsonNodeSecond = getJsonNode(stringHttpResponseSecond);
+                    final double latSecond = jsonNodeSecond.at("/iss_position/latitude").asDouble();
+                    final double lonSecond = jsonNodeSecond.at("/iss_position/longitude").asDouble();
+
+                    final double distance = calculateDistance(latFirst, lonFirst, latSecond, lonSecond);
+
+                    //dorga/przez czas
+                    double speed = distance / timeDifferenceInSeconds;
+                    System.out.println("Iss is going " + speed + "km/s");
+                    writeToCsv("iss_speed.csv", true, "Speed", String.valueOf(speed));
+                    break;
+
+                case 4:
                     System.out.println("Zamkykamy appkę");
                     break;
 
@@ -91,7 +116,7 @@ public class Main {
                     break;
             }
 
-        } while (choice != 3);
+        } while (choice != 4);
 
         scanner.close();
     }
@@ -120,5 +145,24 @@ public class Main {
             writer.write(line.toString());
         }
 
+    }
+
+
+    public static double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+        // Promień ziemi w kilometrach
+        final double r = 6371;
+
+        // Różnice szerokości i długości geograficznych
+        double deltaLat = Math.toRadians(lat2 - lat1);
+        double deltaLon = Math.toRadians(lon2 - lon1);
+
+        // Obliczenia według wzoru haversine
+        double a = Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+                        Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+        // Odległość w kilometrach
+        return r * c;
     }
 }
