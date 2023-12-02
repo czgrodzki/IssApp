@@ -4,7 +4,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URI;
@@ -15,6 +17,9 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 import java.util.Scanner;
 
 public class Main {
@@ -32,7 +37,8 @@ public class Main {
             System.out.println("1. Pobierz położenie ISS");
             System.out.println("2. Pobierz ludzi na ISS");
             System.out.println("3. Pokaż prędkość ISS");
-            System.out.println("4. Zakończ aplikacje");
+            System.out.println("4. Policz średnią prędkość z pliku");
+            System.out.println("5. Zakończ aplikacje");
 
             choice = scanner.nextInt();
             scanner.nextLine();
@@ -91,7 +97,7 @@ public class Main {
                     final double lonFirst = jsonNodeFirst.at("/iss_position/longitude").asDouble();
 
                     //TODO weź czas z timestampa
-                    final int timeDifferenceInSeconds = 2;
+                    final long timeDifferenceInSeconds = 2;
                     Thread.sleep(Duration.ofSeconds(timeDifferenceInSeconds));
 
                     final HttpResponse<String> stringHttpResponseSecond = getStringHttpResponse(ISS_API_LOCATION);
@@ -108,6 +114,34 @@ public class Main {
                     break;
 
                 case 4:
+                    List<String> speedValues = new ArrayList<>();
+                    try (BufferedReader reader = new BufferedReader(new FileReader("iss_speed.csv"))) {
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                            final String[] split = line.split(",");
+                            speedValues.add(split[1]);
+                        }
+                    }
+
+                    final Optional<Double> sum = speedValues.stream()
+                            .map(Double::valueOf)
+                            .reduce(Double::sum);
+
+                    double average = 0;
+                    if (sum.isPresent()) {
+                      average = sum.get()/speedValues.size();
+                    }
+
+                    System.out.println("Średnia prędkość z pliku to " + average);
+
+//                  To samo, mniej kodu
+//                    speedValues.stream()
+//                            .mapToDouble(Double::parseDouble)
+//                            .average()
+//                            .ifPresentOrElse(System.out::println, () -> System.out.println("Nie ma średniej"));
+                    break;
+
+                case 5:
                     System.out.println("Zamkykamy appkę");
                     break;
 
@@ -116,7 +150,7 @@ public class Main {
                     break;
             }
 
-        } while (choice != 4);
+        } while (choice != 5);
 
         scanner.close();
     }
@@ -142,6 +176,7 @@ public class Main {
                 line.append(argument).append(",");
             }
             line.append("\n");
+            line.deleteCharAt(line.length() - 2);
             writer.write(line.toString());
         }
 
